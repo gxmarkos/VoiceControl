@@ -1,0 +1,34 @@
+{
+  "hotkey": "windows+alt+v",
+  "model_path": "models/vosk-model-small-en-us-0.15",
+  "input_device": null,
+  "listen_timeout": 5,
+  "match_threshold": 0.75,
+  "commands": [
+    {
+      "phrases": ["open database", "open sequel editor", "open beaver"],
+      "type": "app",
+      "target": "C:\\Users\\george.markos\\AppData\\Local\\DBeaver\\dbeaver.exe"
+    },
+    {
+      "phrases": ["goto google", "go to google", "open google"],
+      "type": "url",
+      "target": "https://google.gr"
+    },
+    {
+      "phrases": ["open notepad", "launch notepad"],
+      "type": "app",
+      "target": "notepad.exe"
+    },
+    {
+      "phrases": ["open youtube", "goto youtube", "go to youtube"],
+      "type": "url",
+      "target": "https://youtube.com"
+    },
+        {
+      "phrases": ["open installations", "goto installations", "go to installations"],
+      "type": "url",
+      "target": "https://onesyncway.onedealer.com"
+    }
+  ]
+}
