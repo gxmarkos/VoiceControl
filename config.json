@@ -1,34 +1,29 @@
 {
-  "hotkey": "windows+alt+v",
-  "model_path": "models/vosk-model-small-en-us-0.15",
-  "input_device": null,
-  "listen_timeout": 5,
-  "match_threshold": 0.75,
+  "model_path": "/app/model",
+  "chunk": 2048,
+  "channels": 1,
+  "rate": 16000,
+  "input_device_index": 7,
   "commands": [
     {
-      "phrases": ["open database", "open sequel editor", "open beaver"],
-      "type": "app",
-      "target": "C:\\Users\\george.markos\\AppData\\Local\\DBeaver\\dbeaver.exe"
+      "phrases": ["open firefox"],
+      "action": "i3-msg 'exec firefox'"
     },
     {
-      "phrases": ["goto google", "go to google", "open google"],
-      "type": "url",
-      "target": "https://google.gr"
+      "phrases": ["open terminal"],
+      "action": "i3-msg 'exec i3-sensible-terminal'"
     },
     {
-      "phrases": ["open notepad", "launch notepad"],
-      "type": "app",
-      "target": "notepad.exe"
+      "phrases": ["close window"],
+      "action": "i3-msg '[focus] kill'"
     },
     {
-      "phrases": ["open youtube", "goto youtube", "go to youtube"],
-      "type": "url",
-      "target": "https://youtube.com"
+      "phrases": ["test audio"],
+      "action": "echo TEST AUDIO"
     },
-        {
-      "phrases": ["open installations", "goto installations", "go to installations"],
-      "type": "url",
-      "target": "https://onesyncway.onedealer.com"
+    {
+      "phrases": ["open bicycle", "change to bicycle"],
+      "action": "i3-msg '[class=\"(?i)firefox\"] focus' && xdotool sleep 0.2 key ctrl+alt+b sleep 0.2 type 'Bicycle' sleep 0.2 key Return"
     }
   ]
 }

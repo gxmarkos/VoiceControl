@@ -1,4 +1,0 @@
-vosk
-sounddevice
-keyboard
-numpy

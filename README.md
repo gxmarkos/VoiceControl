@@ -1,140 +1,60 @@
-# Voice Control Launcher (Windows 11)
+# VoiceControl
 
-Press a global hotkey, speak a command, and launch an app or open a website —
-fully offline, no internet or API keys required.
+VoiceControl is a Dockerized, offline voice assistant for Linux that allows you to control your system using spoken commands. It uses [Vosk](https://alphacephei.com/vosk/) for high-quality, offline speech recognition and is specifically designed to integrate with the `i3` window manager and tools like `xdotool` to execute custom actions based on recognized phrases.
 
-- **Hotkey:** `Win+Alt+V` (configurable)
-- **Speech engine:** [Vosk](https://alphacephei.com/vosk/) (offline, English)
-- **Flow:** press hotkey → beep → speak one command → it runs → back to idle
+## Purpose
 
-## How it works
+The project listens to your microphone locally (without sending any audio to the cloud) and maps specific spoken phrases to system commands. It runs completely containerized but bridges to your host's PulseAudio and X11/i3 sockets, making it useful for hands-free operations like opening applications, managing windows, or simulating keyboard input via `xdotool`.
 
-You press the hotkey. A short beep tells you the mic is live. You say one command
-(e.g. *"goto google"*). The tool matches what you said against the phrases in
-`config.json` and either opens a URL or launches an application. A rising two-tone
-beep means success; a low tone means it didn't understand.
+## Prerequisites
 
-## Setup
+- Docker and Docker Compose
+- PulseAudio (or PipeWire with PulseAudio bridge)
+- `i3` window manager (if using the default configured actions)
 
-Requires Python 3.9+ (tested on 3.14).
+## Configuration
 
-```powershell
-# 1. Install dependencies
-pip install -r requirements.txt
+To make VoiceControl work on your system, you need to configure the following components:
 
-# 2. Download the offline speech model (~40 MB, one time)
-python download_model.py
+### 1. Model Configuration (`.env`)
 
-# 3. Edit config.json with your real application paths (see below)
+The assistant uses Vosk models for speech recognition. The project relies on an `.env` file in the root directory to specify which model to download during the Docker build process.
 
-# 4. Run it
-python voice_control.py
-#    ...or just double-click run.bat
+Other voice models (such as smaller, faster models or different languages) can be found at **[https://alphacephei.com/vosk/models](https://alphacephei.com/vosk/models)**. To use a different model, adjust the variables in your `.env` file accordingly.
+
+Example `.env` configuration:
+```env
+MODEL_URL=https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip
+MODEL_DIR=vosk-model-en-us-0.22
 ```
 
-Leave the console window running in the background. Press **Ctrl+C** in it to quit.
+### 2. Assistant Configuration (`config.json`)
 
-## Configuring commands (`config.json`)
+The `config.json` file dictates how the assistant interacts with your audio hardware and defines your custom voice commands.
 
-```json
-{
-  "hotkey": "windows+alt+v",
-  "model_path": "models/vosk-model-small-en-us-0.15",
-  "input_device": null,
-  "listen_timeout": 5,
-  "match_threshold": 0.75,
-  "use_grammar": true,
-  "commands": [
-    {
-      "phrases": ["open database", "open sequel editor"],
-      "type": "app",
-      "target": "C:\\Program Files\\DBeaver\\dbeaver.exe"
-    },
-    {
-      "phrases": ["goto google", "go to google", "open google"],
-      "type": "url",
-      "target": "https://google.gr"
-    }
-  ]
-}
+*   **`input_device_index`**: This is a critical setting. You must set this to the correct microphone input device index as seen *inside the Docker container*. The Python script prints a list of available audio devices to the console when it starts. Check the Docker logs to find the correct index for your microphone and update this field.
+*   **`commands`**: An array of objects defining your voice commands.
+    *   `phrases`: A list of trigger phrases for the command.
+    *   `action`: The shell command to run on the host when the phrase is spoken (e.g., `i3-msg 'exec firefox'`).
+
+### 3. System Permissions
+
+Because the application runs in Docker but controls your local desktop, it maps your host's X11, PulseAudio, and i3 sockets. Depending on your host setup, you may need to explicitly allow the container to connect to your X server:
+
+```bash
+xhost +local:docker
 ```
 
-**Each command:**
-- `phrases` — one or more spoken variants that trigger this command.
-- `type` — `"app"` to launch a program, or `"url"` to open a website.
-- `target` — the full path to the `.exe` (or `.lnk`, or a folder), **or** a URL.
-  Bare names on your PATH (like `notepad.exe`) also work.
-- `allow_multiple` *(app only, optional)* — `true` forces a new instance every
-  time, disabling the focus-existing-window behavior for this command.
-- `process_name` *(app only, optional)* — the executable name to look for when
-  deciding if the app is already running (e.g. `"javaw.exe"`). Defaults to the
-  `.exe` name in `target`. Set this if focusing doesn't find the window because
-  the visible window belongs to a different process than the launcher.
+## Running the Assistant
 
-### Re-running an app that's already open
+After adjusting your `.env` and `config.json`, build and run the assistant:
 
-By default, saying an app command again does **not** start a second copy — it
-finds the app's existing window, maximizes it, and brings it to the front. This is
-controlled by `focus_if_running` / `maximize_on_focus` (see settings above). If a
-particular app's window can't be found this way, set its `process_name`, or set
-`allow_multiple: true` if you actually want a fresh instance each time.
+```bash
+# Build the container (this will download and extract the Vosk model)
+docker-compose build
 
-**Top-level settings:**
-- `hotkey` — key combo to start listening. Use `keyboard` library syntax, e.g.
-  `windows+alt+v`, `ctrl+shift+v`, `ctrl+alt+space`.
-- `input_device` — `null` uses your Windows default microphone. To force a
-  specific mic, set it to the device's index (a number) or part of its name
-  (e.g. `"Microphone"`). Audio is auto-resampled to what the engine needs, so any
-  mic sample rate works.
-- `focus_if_running` — `true` (default) means: if an app command's program is
-  already running, bring its existing window to the front instead of launching a
-  second instance.
-- `maximize_on_focus` — `true` (default) maximizes the window when focusing it;
-  set `false` to just restore + foreground it without maximizing.
-- `listen_timeout` — seconds to listen after the beep before giving up.
-- `match_threshold` — `0`–`1`; how close the recognized text must be to a phrase
-  (higher = stricter). `0.75` is a good default.
-- `use_grammar` — `true` biases recognition toward your exact phrases (more
-  accurate). If an app name is an unusual word the model doesn't know, set this to
-  `false` and rely on fuzzy matching.
+# Start the assistant
+docker-compose up
+```
 
-To find an app's path: right-click its Start-menu / desktop shortcut → **Properties**
-→ copy the **Target** field. Remember to double every backslash in JSON (`\\`).
-
-## Important: use ordinary words, not brand names
-
-The offline model only knows a dictionary of common **English words**. Brand and
-product names — *DBeaver*, *pgAdmin*, *VSCode* — are **not** in it, so it can never
-transcribe them (it prints `Ignoring word missing in vocabulary: 'dbeaver'` at
-startup and hears them as `[unk]`). The trigger phrase and the program are
-unrelated, so just pick a phrase made of normal words:
-
-| To launch | Say something like |
-|-----------|--------------------|
-| DBeaver | "open database", "open sequel editor" |
-| pgAdmin | "open postgres" |
-| VS Code | "open editor", "open code" |
-| Any app | any everyday words you'll remember |
-
-If you press the hotkey and the log shows `[heard] 'open [unk]'`, that's this exact
-problem — swap the phrase for real words. When the app starts, watch for any
-`missing in vocabulary` warning; it names the words you need to change.
-
-## Tips
-
-- **Odd app names** (like *DBeaver*) can be hard for the model to hear — see the
-  section above. Add several `phrases` variants to improve your hit rate.
-- **Start automatically at login:** press `Win+R`, type `shell:startup`, Enter, and
-  put a shortcut to `run.bat` in that folder.
-- **Hotkey doesn't fire?** The `keyboard` library uses a low-level Windows hook; if a
-  combo won't register, run the console **as Administrator**.
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `voice_control.py` | The resident app. |
-| `config.json` | Your hotkey + command mappings (edit this). |
-| `download_model.py` | One-time Vosk model downloader. |
-| `run.bat` | Convenience launcher. |
-| `models/` | Downloaded speech model (git-ignored). |
+Watch the console output. Once you see `Docker Voice Assistant Listening...`, you can start speaking your configured commands! If it's not recognizing your voice, double-check the `input_device_index` printed in the startup logs.

@@ -1,0 +1,26 @@
+services:
+  voice-assistant:
+    build:
+      context: .
+      args:
+        MODEL_URL: ${MODEL_URL}
+        MODEL_DIR: ${MODEL_DIR}
+    container_name: voice-assistant
+    devices:
+      - /dev/snd:/dev/snd
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - XAUTHORITY=/tmp/.Xauthority
+      - PULSE_SERVER=unix:/tmp/pulse-socket
+      - PULSE_COOKIE=/tmp/pulse-cookie
+      - I3SOCK=${I3SOCK}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${XAUTHORITY:-${HOME}/.Xauthority}:/tmp/.Xauthority:ro
+      - /run/user/1000/pulse/native:/tmp/pulse-socket
+      - ${HOME}/.config/pulse/cookie:/tmp/pulse-cookie:ro
+      - /run/user/1000/i3:/run/user/1000/i3
+      - ./voice_assistant.py:/app/voice_assistant.py
+      - ./config.json:/app/config.json
+    group_add:
+      - audio
